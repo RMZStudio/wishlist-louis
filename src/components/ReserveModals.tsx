@@ -57,24 +57,22 @@ export function ReserveModal({ item, onClose, onDone }: Props) {
         <label className="field">
           <span>Ton adresse e-mail</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <small>Elle n’est pas affichée. Elle te servira à annuler ta réservation.</small>
+          <small>Elle n’est pas affichée.</small>
         </label>
         <label className="field">
           <span>Message (facultatif)</span>
           <textarea value={message} onChange={(e) => setMessage(e.target.value)} maxLength={500} rows={3} />
         </label>
-        {message.trim() && (
-          <fieldset className="radios">
-            <legend>Qui peut lire ce message ?</legend>
-            <label>
-              <input type="radio" checked={isPublic} onChange={() => setIsPublic(true)} /> Tout le monde
-            </label>
-            <label>
-              <input type="radio" checked={!isPublic} onChange={() => setIsPublic(false)} /> Privé : seuls les parents
-              le voient
-            </label>
-          </fieldset>
-        )}
+        <fieldset className="radios">
+          <legend>Qui peut lire ce message ?</legend>
+          <label>
+            <input type="radio" checked={isPublic} onChange={() => setIsPublic(true)} /> Tout le monde
+          </label>
+          <label>
+            <input type="radio" checked={!isPublic} onChange={() => setIsPublic(false)} /> Privé : seuls les parents
+            le voient
+          </label>
+        </fieldset>
         {error && <p className="error">{error}</p>}
         <button className="btn primary" disabled={busy}>
           Confirmer la réservation
