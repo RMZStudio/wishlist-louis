@@ -53,7 +53,15 @@ export default function ItemCard({ item, admin, editMode, handle, onEdit, onDele
 
       <div className="card-body">
         <div className="card-title">
-          <h3>{item.title}</h3>
+          <h3>
+            {item.links[0] ? (
+              <a href={item.links[0].url} target="_blank" rel="noopener noreferrer" className="title-link">
+                {item.title}
+              </a>
+            ) : (
+              item.title
+            )}
+          </h3>
           {item.price != null && <span className="price">{formatPrice(item.price)}</span>}
         </div>
         {item.description && <p className="desc">{item.description}</p>}

@@ -270,3 +270,6 @@ body[data-theme='anniversaire'] .foot { background: rgba(255, 255, 255, 0.85); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+.title-link { color: inherit; text-decoration: none; }
+.title-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
