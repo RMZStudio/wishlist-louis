@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { clean, logStmt, patchRow, uid, uniqueSlug } from './util'
+import { fetchImageBytes, scrapeProduct } from './scrape'
 import type { AppEnv } from './types'
 
 export const admin = new Hono<AppEnv>()
@@ -128,6 +129,53 @@ admin.post('/lists/:id/items', async (c) => {
     .bind(id, listId, categoryId, title, listId)
     .run()
   return c.json({ id })
+})
+
+// Création d'un item à partir de l'adresse d'une page produit.
+admin.post('/lists/:id/import', async (c) => {
+  const db = c.env.DB
+  const listId = c.req.param('id')
+  const b = await readBody(c)
+
+  let url: URL
+  try {
+    url = new URL(clean(b.url, 2000))
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('protocole')
+  } catch {
+    return c.json({ error: 'Adresse invalide : elle doit commencer par https://' }, 400)
+  }
+  const categoryId = typeof b.category_id === 'string' && b.category_id ? b.category_id : null
+  const list = await db.prepare('SELECT id FROM lists WHERE id = ?').bind(listId).first()
+  if (!list) return c.json({ error: 'Liste introuvable.' }, 404)
+
+  let data = { title: '', description: '', price: null as number | null, images: [] as string[] }
+  if (b.linkOnly !== true) {
+    const result = await scrapeProduct(url)
+    if (!result.ok) return c.json({ error: result.error }, 422)
+    data = result.data
+  }
+
+  const id = uid()
+  await db.batch([
+    db
+      .prepare(
+        `INSERT INTO items (id, list_id, category_id, title, description, price, position)
+         VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM items WHERE list_id = ?))`,
+      )
+      .bind(id, listId, categoryId, data.title.slice(0, 200) || 'Nouvel item', data.description, data.price, listId),
+    db
+      .prepare('INSERT INTO item_links (id, item_id, label, url, position) VALUES (?, ?, ?, ?, 0)')
+      .bind(uid(), id, url.hostname.replace(/^www\./, ''), url.toString()),
+  ])
+
+  const downloaded = await Promise.all(data.images.map((src) => fetchImageBytes(src, url.toString())))
+  let imported = 0
+  for (const img of downloaded) {
+    if (!img) continue
+    await storeImage(c, id, img.data, img.type, img.ext)
+    imported += 1
+  }
+  return c.json({ id, imported })
 })
 
 admin.patch('/items/:id', async (c) => {

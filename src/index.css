@@ -71,6 +71,8 @@ img { max-width: 100%; display: block; }
 .btn.ok { background: var(--ok-soft); border-color: var(--brand); color: var(--brand-dark); }
 .btn.small { padding: 0.3rem 0.8rem; font-size: 0.85rem; }
 .btn.add { margin-top: 0.75rem; }
+.add-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.add-row .btn.add { margin-top: 0; }
 .linklike { background: none; border: 0; padding: 0; font: inherit; font-size: 0.9rem; color: var(--brand-dark); text-decoration: underline; cursor: pointer; }
 .linklike.danger { color: var(--danger); }
 .icon-btn { background: none; border: 0; font-size: 1.1rem; cursor: pointer; padding: 0.3rem 0.5rem; border-radius: 8px; color: var(--muted); }

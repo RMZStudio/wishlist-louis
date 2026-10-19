@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError, errorMessage } from '../api'
 import { useAuth } from '../auth'
 import ItemCard from '../components/ItemCard'
+import ImportModal from '../components/ImportModal'
 import ItemEditor from '../components/ItemEditor'
 import Modal from '../components/Modal'
 import Sortable from '../components/Sortable'
@@ -20,6 +21,7 @@ export default function ListPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [newCat, setNewCat] = useState('')
+  const [importFor, setImportFor] = useState<{ categoryId: string | null } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -153,9 +155,14 @@ export default function ListPage() {
         </div>
       )}
       {editMode && (
-        <button className="btn ghost add" onClick={() => void addItem(categoryId)}>
-          Ajouter un item
-        </button>
+        <div className="add-row">
+          <button className="btn ghost add" onClick={() => void addItem(categoryId)}>
+            Ajouter un item
+          </button>
+          <button className="btn ghost add" onClick={() => setImportFor({ categoryId })}>
+            Ajouter depuis un lien
+          </button>
+        </div>
       )}
     </>
   )
@@ -252,6 +259,19 @@ export default function ListPage() {
           <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Nouvelle catégorie (ex. Jouets d’éveil)" />
           <button className="btn primary">Créer la catégorie</button>
         </form>
+      )}
+
+      {importFor && (
+        <ImportModal
+          listId={list.id}
+          categoryId={importFor.categoryId}
+          onClose={() => setImportFor(null)}
+          onDone={async (id) => {
+            setImportFor(null)
+            await load()
+            setEditingId(id)
+          }}
+        />
       )}
 
       {editing && (
