@@ -1,0 +1,26 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "wishlist-louis",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-06-01",
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*",
+			"/img/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "wishlist-louis",
+			"database_id": "b6017b4d-72ec-4ef3-abc1-8754d0203084"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "IMAGES",
+			"bucket_name": "wishlist-louis-images"
+		}
+	]
+}

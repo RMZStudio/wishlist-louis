@@ -1,0 +1,2 @@
+ADMIN_PASSWORD=choisis-un-mot-de-passe-solide
+SESSION_SECRET=une-longue-chaine-aleatoire-d-au-moins-32-caracteres
