@@ -1,2 +1,7 @@
 ADMIN_PASSWORD=choisis-un-mot-de-passe-solide
 SESSION_SECRET=une-longue-chaine-aleatoire-d-au-moins-32-caracteres
+
+# E-mails (facultatif). Laisse vide en local pour ne rien envoyer pendant tes tests.
+# RESEND_API_KEY=re_xxxxxxxx
+# MAIL_FROM=Les envies de bébé <liste@mail.tondomaine.fr>
+# ADMIN_EMAILS=toi@exemple.fr, ta-femme@exemple.fr

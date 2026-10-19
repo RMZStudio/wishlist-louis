@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 import { admin } from './admin'
+import { notify } from './mail'
 import { clean, logStmt, safeEqual } from './util'
 import type { AppEnv } from './types'
 
@@ -30,6 +31,12 @@ app.get('/api/me', (c) => c.json({ admin: c.get('isAdmin') }))
 
 app.post('/api/login', async (c) => {
   const db = c.env.DB
+  if (!c.env.ADMIN_PASSWORD || !c.env.SESSION_SECRET) {
+    return c.json(
+      { error: 'Configuration incomplète : les secrets ADMIN_PASSWORD et SESSION_SECRET doivent être définis.' },
+      500,
+    )
+  }
   const ip = c.req.header('CF-Connecting-IP') ?? 'local'
   const since = Date.now() - 15 * 60 * 1000
   const row = await db
@@ -42,7 +49,7 @@ app.post('/api/login', async (c) => {
 
   const body = (await c.req.json().catch(() => ({}))) as { password?: unknown }
   const password = typeof body.password === 'string' ? body.password : ''
-  if (!(await safeEqual(password, c.env.ADMIN_PASSWORD))) {
+  if (!password || !(await safeEqual(password, c.env.ADMIN_PASSWORD))) {
     await db.batch([
       db.prepare('INSERT INTO auth_fails (ip, at) VALUES (?, ?)').bind(ip, Date.now()),
       db.prepare('DELETE FROM auth_fails WHERE at < ?').bind(since),
@@ -199,10 +206,10 @@ app.get('/api/lists/:slug', async (c) => {
 // --- Réservation / annulation (visiteurs) -----------------------------------
 async function findItem(c: Context<AppEnv>, itemId: string) {
   const item = await c.env.DB.prepare(
-    'SELECT i.id, i.title, l.title AS list_title, l.is_public FROM items i JOIN lists l ON l.id = i.list_id WHERE i.id = ?',
+    'SELECT i.id, i.title, l.title AS list_title, l.slug AS list_slug, l.is_public FROM items i JOIN lists l ON l.id = i.list_id WHERE i.id = ?',
   )
     .bind(itemId)
-    .first<{ id: string; title: string; list_title: string; is_public: number }>()
+    .first<{ id: string; title: string; list_title: string; list_slug: string; is_public: number }>()
   if (!item || (!item.is_public && !c.get('isAdmin'))) return null
   return item
 }
@@ -244,6 +251,19 @@ app.post('/api/items/:id/reserve', async (c) => {
     }
     throw e
   }
+  c.executionCtx.waitUntil(
+    notify(c.env, {
+      kind: 'reserve',
+      origin: new URL(c.req.url).origin,
+      slug: item.list_slug,
+      listTitle: item.list_title,
+      itemTitle: item.title,
+      name,
+      email,
+      message,
+      messagePublic,
+    }),
+  )
   return c.json({ ok: true })
 })
 
@@ -276,6 +296,19 @@ app.post('/api/items/:id/cancel', async (c) => {
       messagePublic: !!resa.message_public,
     }),
   ])
+  c.executionCtx.waitUntil(
+    notify(c.env, {
+      kind: 'cancel',
+      origin: new URL(c.req.url).origin,
+      slug: item.list_slug,
+      listTitle: item.list_title,
+      itemTitle: item.title,
+      name: resa.name,
+      email: resa.email,
+      message: resa.message,
+      messagePublic: !!resa.message_public,
+    }),
+  )
   return c.json({ ok: true })
 })
 
