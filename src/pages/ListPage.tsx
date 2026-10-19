@@ -201,7 +201,6 @@ export default function ListPage() {
   return (
     <>
       <section className="hero">
-        {list.theme && <span className="badge theme-badge">{THEMES[list.theme]}</span>}
         <h1>{list.title}</h1>
         {list.description && <p>{list.description}</p>}
         <p className="muted">
