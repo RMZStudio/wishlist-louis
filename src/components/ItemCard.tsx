@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, errorMessage } from '../api'
 import { formatPrice } from '../lib'
 import type { Item } from '../types'
-import { CancelModal, ReserveModal } from './ReserveModals'
+import { CancelModal, EditReservationModal, ReserveModal } from './ReserveModals'
 
 interface Props {
   item: Item
@@ -16,7 +16,7 @@ interface Props {
 
 export default function ItemCard({ item, admin, editMode, handle, onEdit, onDelete, onChanged }: Props) {
   const [current, setCurrent] = useState(0)
-  const [modal, setModal] = useState<'reserve' | 'cancel' | null>(null)
+  const [modal, setModal] = useState<'reserve' | 'cancel' | 'edit' | null>(null)
   const r = item.reservation
   const cover = item.images[Math.min(current, item.images.length - 1)]
 
@@ -35,6 +35,7 @@ export default function ItemCard({ item, admin, editMode, handle, onEdit, onDele
       <div className="media">
         {cover ? <img src={`/img/${cover.file_key}`} alt={item.title} loading="lazy" /> : <div className="noimg">Pas encore de photo</div>}
         {r && <span className="ribbon">Réservé</span>}
+        {item.featured && <span className="fav-badge">♥ Coup de cœur</span>}
         {item.images.length > 1 && (
           <div className="thumbs">
             {item.images.map((img, i) => (
@@ -102,9 +103,14 @@ export default function ItemCard({ item, admin, editMode, handle, onEdit, onDele
             </button>
           )}
           {admin && r && (
-            <button className="linklike danger" onClick={() => void adminCancel()}>
-              Annuler (admin)
-            </button>
+            <>
+              <button className="linklike" onClick={() => setModal('edit')}>
+                Modifier la réservation
+              </button>
+              <button className="linklike danger" onClick={() => void adminCancel()}>
+                Annuler (admin)
+              </button>
+            </>
           )}
         </div>
 
@@ -125,6 +131,7 @@ export default function ItemCard({ item, admin, editMode, handle, onEdit, onDele
 
       {modal === 'reserve' && <ReserveModal item={item} onClose={() => setModal(null)} onDone={onChanged} />}
       {modal === 'cancel' && <CancelModal item={item} onClose={() => setModal(null)} onDone={onChanged} />}
+      {modal === 'edit' && <EditReservationModal item={item} onClose={() => setModal(null)} onDone={onChanged} />}
     </article>
   )
 }

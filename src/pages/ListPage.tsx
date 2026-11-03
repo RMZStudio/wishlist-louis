@@ -5,12 +5,34 @@ import { useAuth } from '../auth'
 import ItemCard from '../components/ItemCard'
 import ImportModal from '../components/ImportModal'
 import ItemEditor from '../components/ItemEditor'
+import ItemModal from '../components/ItemModal'
+import ItemRow from '../components/ItemRow'
 import Modal from '../components/Modal'
 import Sortable from '../components/Sortable'
 import { THEMES, type ThemeKey } from '../lib'
 import type { Category, Item, WishList } from '../types'
 
 type Status = 'loading' | 'ok' | 'private' | 'missing' | 'error'
+type Filter = 'all' | 'free' | 'reserved'
+type SortMode = 'category' | 'price-asc' | 'price-desc'
+type View = 'cards' | 'compact'
+
+const VIEW_KEY = 'wishlist_view'
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'compact' ? 'compact' : 'cards'
+  } catch {
+    return 'cards'
+  }
+}
+
+// Les items sans prix passent toujours en dernier.
+const byPrice = (dir: 'asc' | 'desc') => (a: Item, b: Item) => {
+  if (a.price == null && b.price == null) return 0
+  if (a.price == null) return 1
+  if (b.price == null) return -1
+  return dir === 'asc' ? a.price - b.price : b.price - a.price
+}
 
 export default function ListPage() {
   const { slug = '' } = useParams()
@@ -22,6 +44,19 @@ export default function ListPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [newCat, setNewCat] = useState('')
   const [importFor, setImportFor] = useState<{ categoryId: string | null } | null>(null)
+  const [filter, setFilter] = useState<Filter>('all')
+  const [sort, setSort] = useState<SortMode>('category')
+  const [view, setView] = useState<View>(readView)
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  function changeView(v: View) {
+    setView(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      // stockage indisponible : le choix ne sera pas mémorisé
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -80,8 +115,14 @@ export default function ListPage() {
 
   const list = data
   const editing = list.items.find((i) => i.id === editingId)
-  const itemsOf = (categoryId: string | null) => list.items.filter((i) => i.category_id === categoryId)
+  const opened = list.items.find((i) => i.id === openId)
+  // Filtre, tri et affichage compact ne s'appliquent qu'en lecture : en édition on garde l'ordre réel.
+  const matches = (i: Item) => filter === 'all' || (filter === 'free' ? !i.reservation : !!i.reservation)
+  const itemsOf = (categoryId: string | null) =>
+    list.items.filter((i) => i.category_id === categoryId && (editMode || matches(i)))
   const reservedCount = list.items.filter((i) => i.reservation).length
+  const shownCount = list.items.filter(matches).length
+  const flat = !editMode && sort !== 'category'
 
   function reorderItems(subset: Item[]) {
     const ids = new Set(subset.map((i) => i.id))
@@ -147,6 +188,12 @@ export default function ListPage() {
             />
           )}
         </Sortable>
+      ) : view === 'compact' ? (
+        <div className="compact-list">
+          {items.map((it) => (
+            <ItemRow key={it.id} item={it} onOpen={() => setOpenId(it.id)} />
+          ))}
+        </div>
       ) : (
         <div className="grid">
           {items.map((it) => (
@@ -198,9 +245,39 @@ export default function ListPage() {
   const loose = itemsOf(null)
   const showLoose = editMode || loose.length > 0
 
+  const toolbar = (
+    <div className="toolbar">
+      <label>
+        Afficher
+        <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
+          <option value="all">Tous les cadeaux</option>
+          <option value="free">Disponibles</option>
+          <option value="reserved">Réservés</option>
+        </select>
+      </label>
+      <label>
+        Trier par
+        <select value={sort} onChange={(e) => setSort(e.target.value as SortMode)}>
+          <option value="category">Catégorie</option>
+          <option value="price-asc">Prix croissant</option>
+          <option value="price-desc">Prix décroissant</option>
+        </select>
+      </label>
+      <div className="seg" role="group" aria-label="Mode d’affichage">
+        <button type="button" className={view === 'cards' ? 'on' : ''} onClick={() => changeView('cards')}>
+          Cartes
+        </button>
+        <button type="button" className={view === 'compact' ? 'on' : ''} onClick={() => changeView('compact')}>
+          Compact
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <>
       <section className="hero">
+        {list.theme && <span className="badge theme-badge">{THEMES[list.theme]}</span>}
         <h1>{list.title}</h1>
         {list.description && <p>{list.description}</p>}
         <p className="muted">
@@ -234,7 +311,21 @@ export default function ListPage() {
         <p className="empty">Cette liste est vide pour l’instant.</p>
       )}
 
-      {showLoose && (
+      {!editMode && list.items.length > 0 && toolbar}
+      {!editMode && list.items.length > 0 && shownCount === 0 && (
+        <p className="empty">Aucun cadeau ne correspond à ce filtre.</p>
+      )}
+
+      {flat && shownCount > 0 && (
+        <section className="section">
+          {renderItems(
+            list.items.filter(matches).sort(byPrice(sort === 'price-asc' ? 'asc' : 'desc')),
+            null,
+          )}
+        </section>
+      )}
+
+      {!flat && showLoose && (
         <section className="section">
           {editMode && (
             <div className="section-head">
@@ -245,19 +336,26 @@ export default function ListPage() {
         </section>
       )}
 
-      {editMode ? (
-        <Sortable items={list.categories} onReorder={reorderCategories}>
-          {(cat, handle) => renderCategory(cat, handle)}
-        </Sortable>
-      ) : (
-        list.categories.map((cat) => renderCategory(cat))
-      )}
+      {!flat &&
+        (editMode ? (
+          <Sortable items={list.categories} onReorder={reorderCategories}>
+            {(cat, handle) => renderCategory(cat, handle)}
+          </Sortable>
+        ) : (
+          list.categories.map((cat) => renderCategory(cat))
+        ))}
 
       {editMode && (
         <form onSubmit={addCategory} className="inline-form">
           <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Nouvelle catégorie (ex. Jouets d’éveil)" />
           <button className="btn primary">Créer la catégorie</button>
         </form>
+      )}
+
+      {opened && (
+        <ItemModal title={opened.title} onClose={() => setOpenId(null)}>
+          <ItemCard item={opened} admin={admin} editMode={false} onChanged={load} />
+        </ItemModal>
       )}
 
       {importFor && (

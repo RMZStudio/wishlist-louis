@@ -107,6 +107,7 @@ type ItemRow = {
   title: string
   description: string
   price: number | null
+  featured: number
 }
 type ChildRow = { item_id: string; id: string }
 type ImageRow = ChildRow & { file_key: string }
@@ -151,7 +152,7 @@ app.get('/api/lists/:slug', async (c) => {
   const [cats, items, imgs, links, resas] = await db.batch([
     db.prepare('SELECT id, title FROM categories WHERE list_id = ? ORDER BY position').bind(id),
     db
-      .prepare('SELECT id, category_id, title, description, price FROM items WHERE list_id = ? ORDER BY position')
+      .prepare('SELECT id, category_id, title, description, price, featured FROM items WHERE list_id = ? ORDER BY position')
       .bind(id),
     db
       .prepare(
@@ -186,6 +187,7 @@ app.get('/api/lists/:slug', async (c) => {
       const r = resaMap.get(it.id)
       return {
         ...it,
+        featured: !!it.featured,
         images: (imgMap.get(it.id) ?? []).map((i) => ({ id: i.id, file_key: i.file_key })),
         links: (linkMap.get(it.id) ?? []).map((l) => ({ id: l.id, label: l.label, url: l.url })),
         reservation: r

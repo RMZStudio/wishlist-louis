@@ -8,6 +8,7 @@ const LABELS: Record<LogEntry['action'], string> = {
   reserve: 'Réservation',
   cancel: 'Annulation',
   admin_cancel: 'Annulation (admin)',
+  admin_edit: 'Modification (admin)',
 }
 
 export default function Logs() {
@@ -69,7 +70,9 @@ export default function Logs() {
                   </td>
                   <td>
                     {l.message ?? <span className="muted">—</span>}
-                    {l.message && <span className="muted"> ({l.message_public ? 'public' : 'privé'})</span>}
+                    {l.message && l.action !== 'admin_edit' && (
+                      <span className="muted"> ({l.message_public ? 'public' : 'privé'})</span>
+                    )}
                   </td>
                 </tr>
               ))}

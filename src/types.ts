@@ -36,6 +36,7 @@ export interface Item {
   title: string
   description: string
   price: number | null
+  featured: boolean
   images: ItemImage[]
   links: ItemLink[]
   reservation: Reservation | null
@@ -60,7 +61,7 @@ export interface WishList {
 export interface LogEntry {
   id: number
   at: string
-  action: 'reserve' | 'cancel' | 'admin_cancel'
+  action: 'reserve' | 'cancel' | 'admin_cancel' | 'admin_edit'
   list_title: string
   item_title: string
   name: string

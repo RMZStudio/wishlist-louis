@@ -57,14 +57,14 @@ export function ReserveModal({ item, onClose, onDone }: Props) {
         <label className="field">
           <span>Ton adresse e-mail</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <small>Elle n’est pas affichée.</small>
+          <small>Elle n’est pas affichée. Elle te servira à annuler ta réservation.</small>
         </label>
         <label className="field">
           <span>Message (facultatif)</span>
           <textarea value={message} onChange={(e) => setMessage(e.target.value)} maxLength={500} rows={3} />
         </label>
         <fieldset className="radios">
-          <legend>Qui peut lire ce message ?</legend>
+          <legend>Qui peut lire ton message ?</legend>
           <label>
             <input type="radio" checked={isPublic} onChange={() => setIsPublic(true)} /> Tout le monde
           </label>
@@ -111,6 +111,48 @@ export function CancelModal({ item, onClose, onDone }: Props) {
         {error && <p className="error">{error}</p>}
         <button className="btn primary" disabled={busy}>
           Annuler ma réservation
+        </button>
+      </form>
+    </Modal>
+  )
+}
+
+export function EditReservationModal({ item, onClose, onDone }: Props) {
+  const r = item.reservation
+  const [name, setName] = useState(r?.name ?? '')
+  const [email, setEmail] = useState(r?.email ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      await api.patch(`/api/admin/items/${item.id}/reservation`, { name, email })
+      await onDone()
+      onClose()
+    } catch (err) {
+      setError(errorMessage(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title="Modifier la réservation" onClose={onClose}>
+      <form onSubmit={submit} className="stack">
+        <label className="field">
+          <span>Nom</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required autoFocus />
+        </label>
+        <label className="field">
+          <span>Adresse e-mail</span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <small>C’est l’adresse que la personne devra saisir pour annuler sa réservation.</small>
+        </label>
+        {error && <p className="error">{error}</p>}
+        <button className="btn primary" disabled={busy}>
+          Enregistrer
         </button>
       </form>
     </Modal>

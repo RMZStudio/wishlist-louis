@@ -41,7 +41,7 @@ export async function safeEqual(a: string, b: string) {
   return crypto.subtle.timingSafeEqual(ha, hb)
 }
 
-export type LogAction = 'reserve' | 'cancel' | 'admin_cancel'
+export type LogAction = 'reserve' | 'cancel' | 'admin_cancel' | 'admin_edit'
 
 export function logStmt(
   db: D1Database,

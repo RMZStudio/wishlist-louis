@@ -47,7 +47,7 @@ admin.patch('/lists/:id', async (c) => {
   }
   if (typeof b.description === 'string') f.description = b.description.slice(0, 2000)
   if (typeof b.is_public === 'boolean') f.is_public = b.is_public ? 1 : 0
-  if ('theme' in b) f.theme = b.theme === 'noel' || b.theme === 'anniversaire' ? b.theme : null
+  if ('theme' in b) f.theme = typeof b.theme === 'string' && /^[a-z0-9-]{1,30}$/.test(b.theme) ? b.theme : null
   if (typeof b.slug === 'string' && b.slug.trim()) f.slug = await uniqueSlug(c.env.DB, b.slug, id)
   await patchRow(c.env.DB, 'lists', id, f)
   const row = await c.env.DB.prepare('SELECT slug FROM lists WHERE id = ?').bind(id).first<{ slug: string }>()
@@ -190,6 +190,7 @@ admin.patch('/items/:id', async (c) => {
     f.title = t
   }
   if (typeof b.description === 'string') f.description = b.description.slice(0, 5000)
+  if (typeof b.featured === 'boolean') f.featured = b.featured ? 1 : 0
   if ('price' in b) {
     f.price = typeof b.price === 'number' && Number.isFinite(b.price) && b.price >= 0 ? b.price : null
   }
@@ -274,6 +275,42 @@ admin.delete('/items/:id/reservation', async (c) => {
       email: row.email,
       message: row.message,
       messagePublic: !!row.message_public,
+    }),
+  ])
+  return ok(c)
+})
+
+// Modification du nom et/ou de l'e-mail d'une réservation par l'admin
+admin.patch('/items/:id/reservation', async (c) => {
+  const db = c.env.DB
+  const itemId = c.req.param('id')
+  const b = await readBody(c)
+  const name = clean(b.name, 80)
+  const email = clean(b.email, 200).toLowerCase()
+  if (!name) return c.json({ error: 'Le nom est obligatoire.' }, 400)
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Adresse e-mail invalide.' }, 400)
+
+  const row = await db
+    .prepare(
+      `SELECT r.name, r.email, i.title AS item_title, l.title AS list_title
+       FROM reservations r JOIN items i ON i.id = r.item_id JOIN lists l ON l.id = i.list_id
+       WHERE r.item_id = ?`,
+    )
+    .bind(itemId)
+    .first<{ name: string; email: string; item_title: string; list_title: string }>()
+  if (!row) return c.json({ error: 'Aucune réservation.' }, 404)
+  if (row.name === name && row.email === email) return ok(c)
+
+  await db.batch([
+    db.prepare('UPDATE reservations SET name = ?, email = ? WHERE item_id = ?').bind(name, email, itemId),
+    logStmt(db, {
+      action: 'admin_edit',
+      listTitle: row.list_title,
+      itemTitle: row.item_title,
+      name,
+      email,
+      message: `Avant : ${row.name} (${row.email})`,
+      messagePublic: false,
     }),
   ])
   return ok(c)

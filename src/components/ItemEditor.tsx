@@ -16,6 +16,7 @@ export default function ItemEditor({ item, categories, onClose, onChanged }: Pro
   const [description, setDescription] = useState(item.description)
   const [price, setPrice] = useState(item.price == null ? '' : String(item.price).replace('.', ','))
   const [categoryId, setCategoryId] = useState(item.category_id ?? '')
+  const [featured, setFeatured] = useState(item.featured)
   const [links, setLinks] = useState(item.links.map((l) => ({ label: l.label, url: l.url })))
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -87,6 +88,7 @@ export default function ItemEditor({ item, categories, onClose, onChanged }: Pro
         description,
         price: parsed,
         category_id: categoryId || null,
+        featured,
         links: links.filter((l) => l.url.trim()),
       })
       await onChanged()
@@ -108,6 +110,11 @@ export default function ItemEditor({ item, categories, onClose, onChanged }: Pro
         <label className="field">
           <span>Description</span>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
+        </label>
+
+        <label className="check">
+          <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
+          <span>Coup de cœur des parents (une mention s’affiche sur la photo)</span>
         </label>
 
         <div className="row2">
